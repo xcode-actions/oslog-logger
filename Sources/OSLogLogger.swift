@@ -206,6 +206,10 @@ private extension OSLogLogger {
 		var  pubMeta = [String]()
 		var privMeta = [String]()
 		metadata.lazy.sorted{ $0.key < $1.key }.forEach{ keyVal in
+			/* If we wanted to drop the “pub.” prefix for public metadata. */
+//			let isPub = keyVal.key.hasPrefix(Self.pubMetaPrefix)
+//			let key = (isPub ? String(keyVal.key.dropFirst(Self.pubMetaPrefix.count)) : keyVal.key)
+//			let flat = prettyMetadataKeyValPair((key, keyVal.value))
 			let flat = prettyMetadataKeyValPair(keyVal)
 			if keyVal.key.starts(with: Self.pubMetaPrefix) { pubMeta.append(flat)}
 			else                                           {privMeta.append(flat)}
