@@ -61,7 +61,7 @@ public struct OSLogLogger : LogHandler {
 		if let m = mergedMetadata(with: logMetadata) {effectiveFlatMetadata = flatMetadataArrays(m)}
 		else                                         {effectiveFlatMetadata = flatMetadataCache}
 		
-		if #available(macOS 11, *) {
+		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
 			switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
 				case ( true,  true): os_log(Self.logLevelToLogType(level), "\(message, privacy: .public)")
 				case (false,  true): os_log(Self.logLevelToLogType(level), "\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)")
