@@ -39,16 +39,34 @@ public struct OSLogLogger : LogHandler {
 	
 	public init(subsystem: String, category: String, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
 		self.metadataProvider = metadataProvider
-		self.oslog = .init(subsystem: subsystem, category: category)
+		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
+			self.l = .logger(os.Logger(subsystem: subsystem, category: category))
+		} else {
+			self.l = .oslog(.init(subsystem: subsystem, category: category))
+		}
 	}
 	
 	/* Honestly I think this init is useless.
 	 * I only included it because the init with a structured category exists in OSLog,
 	 *  but this init does not even exists for os.Logger, so it is probably useless. */
-	@available(macOS 10.14, *)
+	@available(macOS 10.14, iOS 12.0, watchOS 5.0, tvOS 12.0, *)
 	public init(subsystem: String, category: OSLog.Category, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
+		self.init(oslog: .init(subsystem: subsystem, category: category), metadataProvider: metadataProvider)
+	}
+	
+	public init(oslog: OSLog, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
 		self.metadataProvider = metadataProvider
-		self.oslog = .init(subsystem: subsystem, category: category)
+		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
+			self.l = .logger(os.Logger(oslog))
+		} else {
+			self.l = .oslog(oslog)
+		}
+	}
+	
+	@available(macOS 11, tvOS 14, iOS 14, watchOS 7, *)
+	public init(logger: os.Logger, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
+		self.metadataProvider = metadataProvider
+		self.l = .logger(logger)
 	}
 	
 	public subscript(metadataKey metadataKey: String) -> Logging.Logger.Metadata.Value? {
@@ -62,31 +80,68 @@ public struct OSLogLogger : LogHandler {
 		else                                         {effectiveFlatMetadata = flatMetadataCache}
 		
 		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
-			switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
-				case ( true,  true): os_log(Self.logLevelToLogType(level), "\(message, privacy: .public)")
-				case (false,  true): os_log(Self.logLevelToLogType(level), "\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)")
-				case ( true, false): os_log(Self.logLevelToLogType(level), "\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
-				case (false, false): os_log(Self.logLevelToLogType(level), "\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
-			}
 			/* If we could use os.Logger directly.
 			 * Note these calls probably do more or less what the os_log call above does… */
-//			let oslogger = os.Logger(oslog)
-//			switch logLevel {
-//				case .trace:    oslogger.trace   (...)
-//				case .debug:    oslogger.debug   (...)
-//				case .info:     oslogger.info    (...)
-//				case .notice:   oslogger.notice  (...)
-//				case .warning:  oslogger.warning (...)
-//				case .error:    oslogger.error   (...)
-//				case .critical: oslogger.critical(...)
-//			}
+			switch level {
+				case .trace:
+					switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
+						case ( true,  true): l.logger.trace("\(message, privacy: .public)")
+						case (false,  true): l.logger.trace("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)")
+						case ( true, false): l.logger.trace("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+						case (false, false): l.logger.trace("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+					}
+				case .debug:
+					switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
+						case ( true,  true): l.logger.debug("\(message, privacy: .public)")
+						case (false,  true): l.logger.debug("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)")
+						case ( true, false): l.logger.debug("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+						case (false, false): l.logger.debug("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+					}
+				case .info:
+					switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
+						case ( true,  true): l.logger.info("\(message, privacy: .public)")
+						case (false,  true): l.logger.info("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)")
+						case ( true, false): l.logger.info("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+						case (false, false): l.logger.info("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+					}
+				case .notice:
+					switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
+						case ( true,  true): l.logger.notice("\(message, privacy: .public)")
+						case (false,  true): l.logger.notice("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)")
+						case ( true, false): l.logger.notice("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+						case (false, false): l.logger.notice("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+					}
+				case .warning:
+					switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
+						case ( true,  true): l.logger.warning("\(message, privacy: .public)")
+						case (false,  true): l.logger.warning("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)")
+						case ( true, false): l.logger.warning("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+						case (false, false): l.logger.warning("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+					}
+				case .error:
+					switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
+						case ( true,  true): l.logger.error("\(message, privacy: .public)")
+						case (false,  true): l.logger.error("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)")
+						case ( true, false): l.logger.error("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+						case (false, false): l.logger.error("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+					}
+				case .critical:
+					switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
+						case ( true,  true): l.logger.critical("\(message, privacy: .public)")
+						case (false,  true): l.logger.critical("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)")
+						case ( true, false): l.logger.critical("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+						case (false, false): l.logger.critical("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
+					}
+			}
+			
 		} else {
 			switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
-				case ( true,  true): os_log("%{public}@",                                   log: oslog, type: Self.logLevelToLogType(level), "\(message)")
-				case (false,  true): os_log("%{public}@\n  ▷ %{public}@",                   log: oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.public .joined(separator: "\n  ▷ "))
-				case ( true, false): os_log("%{public}@\n  ▷ %{private}@",                  log: oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.private.joined(separator: "\n  ▷ "))
-				case (false, false): os_log("%{public}@\n  ▷ %{public}@\n  ▷ %{private}@",  log: oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), effectiveFlatMetadata.private.joined(separator: "\n  ▷ "))
+				case ( true,  true): os_log("%{public}@",                                   log: l.oslog, type: Self.logLevelToLogType(level), "\(message)")
+				case (false,  true): os_log("%{public}@\n  ▷ %{public}@",                   log: l.oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.public .joined(separator: "\n  ▷ "))
+				case ( true, false): os_log("%{public}@\n  ▷ %{private}@",                  log: l.oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.private.joined(separator: "\n  ▷ "))
+				case (false, false): os_log("%{public}@\n  ▷ %{public}@\n  ▷ %{private}@",  log: l.oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), effectiveFlatMetadata.private.joined(separator: "\n  ▷ "))
 			}
+			
 		}
 	}
 	
@@ -108,9 +163,7 @@ public struct OSLogLogger : LogHandler {
 		}
 	}
 	
-	/* os.Logger is only available from macOS 11.
-	 * Let’s be as compatible as possible. */
-	private var oslog: OSLog
+	private var l: UnderlyingLogger
 	
 	private var flatMetadataCache = (public: [String](), private: [String]())
 	
