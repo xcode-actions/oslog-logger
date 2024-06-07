@@ -75,6 +75,14 @@ public struct OSLogLogger : LogHandler {
 	}
 	
 	public func log(level: Logging.Logger.Level, message: Logging.Logger.Message, metadata logMetadata: Logging.Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
+		/* AFAICT os.Logger does not allow passing an “original log source” when logging, so we pass the log source in the metadata… */
+		let logMetadata = (logMetadata ?? [:]).merging([
+			Self.pubMetaPrefix + "__source":   "\(source)",
+			Self.pubMetaPrefix + "__fileID":   "\(file)",
+			Self.pubMetaPrefix + "__function": "\(function)",
+			Self.pubMetaPrefix + "__line":     "\(line)",
+		], uniquingKeysWith: { current, _ in current })
+		
 		let effectiveFlatMetadata: (public: [String], private: [String])
 		if let m = mergedMetadata(with: logMetadata) {effectiveFlatMetadata = flatMetadataArrays(m)}
 		else                                         {effectiveFlatMetadata = flatMetadataCache}
