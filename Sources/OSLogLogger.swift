@@ -153,9 +153,7 @@ public struct OSLogLogger : LogHandler {
 	/* Note about os.Logger:
 	 * os.Logger has all the methods to log using the same log levels as Logging.Logger,
 	 *  however it seems the core log method of os.Logger is still using OSLogType under the hood,
-	 *  and thus do not have actual access to the additional log levels it provides through its API…
-	 * If we decide to use os.Logger at some point we should _probably_ use the methods provided to log at the level we want directly,
-	 *  in case either Apple uses private stuff and actually logs at the given level or if Apple adds the log levels in question later. */
+	 *  and thus do not have actual access to the additional log levels it provides through its API… */
 	private static func logLevelToLogType(_ logLevel: Logging.Logger.Level) -> OSLogType {
 		switch logLevel {
 			case .trace:    return .debug
