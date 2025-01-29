@@ -38,12 +38,20 @@ internal extension String {
 					
 				case .escapeScalars(_, let octothorpLevel?, _, true):
 					let octothorps = String(repeating: "#", count: Int(octothorpLevel))
-					return (octothorpLevel, octothorps + #"""#, #"""# + octothorps)
+//#if swift(>=5.4)
+//					return (octothorpLevel, octothorps + #"""#, #"""# + octothorps)
+//#else
+					return (octothorpLevel, octothorps + "\"", "\"" + octothorps)
+//#endif
 					
 				case .escapeScalars(_, nil, _, let showQuotes):
 					/* We must determine the octothorp level. */
 					var level = UInt(0)
-					var (sepOpen, sepClose) = (#"""#, #"""#)
+//#if swift(>=5.4)
+//					var (sepOpen, sepClose) = (#"""#, #"""#)
+//#else
+					var (sepOpen, sepClose) = ("\"", "\"")
+//#endif
 					while str.contains(sepClose) {
 						level += 1
 						sepOpen = "#" + sepOpen
@@ -65,7 +73,7 @@ internal extension String {
 		
 		var hasProcessedNewLines = false
 		var specialCharState: (UnicodeScalar, Int)? = nil /* First element is the special char, the other is the number of octothorps found. */
-		let ascii = unicodeScalars.lazy.map{ scalar in
+		let ascii = unicodeScalars.lazy.map{ scalar -> String in
 			/* Let’s build the previous escape if needed. */
 			let prefix: String
 			if scalar == "#" {
@@ -75,7 +83,11 @@ internal extension String {
 				if curSpecial.1 == octothorpLevel - 1 {
 					/* We have now reached the number of octothorp needed to build an actual “special char” (closing quote, backslash, etc.); we must escape it. */
 					specialCharState = nil
-					return #"\"# + octothorps + String(curSpecial.0) + octothorps
+//#if swift(>=5.4)
+//					return #"\"# + octothorps + String(curSpecial.0) + octothorps
+//#else
+					return "\\" + octothorps + String(curSpecial.0) + octothorps
+//#endif
 				}
 				specialCharState = (curSpecial.0, curSpecial.1 + 1)
 				return ""
@@ -87,7 +99,8 @@ internal extension String {
 				prefix = ""
 			}
 			
-			if Self.newLines.contains(scalar) {
+			let isNewLine = Self.newLines.contains(scalar)
+			if isNewLine {
 				hasProcessedNewLines = true
 				switch newLineProcessing {
 					case .none:           return prefix + String(scalar)
@@ -111,14 +124,24 @@ internal extension String {
 						specialCharState = (scalar, 0)
 						return prefix + ""
 					}
-					let escaped = scalar.escaped(asASCII: asASCII)
-					return prefix + (octothorpLevel == 0 ? escaped : escaped.replacingOccurrences(of: #"\"#, with: #"\"# + octothorps, options: .literal))
+					let escaped = scalar.escaped(asASCII: asASCII || isNewLine)
+//#if swift(>=5.4)
+//					return prefix + (octothorpLevel == 0 ? escaped : escaped.replacingOccurrences(of: #"\"#, with: #"\"# + octothorps, options: .literal))
+//#else
+					return prefix + (octothorpLevel == 0 ? escaped : escaped.replacingOccurrences(of: "\\", with: "\\" + octothorps, options: .literal))
+//#endif
 			}
 		}
-		return (sepOpen + ascii.joined(separator: "") + (specialCharState.flatMap{ String($0.0) + String(repeating: "#", count: $0.1) } ?? "") + sepClose, hasProcessedNewLines)
+		let asciiJoined = ascii.joined(separator: "")
+		let specialCharStateMapped = (specialCharState.flatMap{ String($0.0) + String(repeating: "#", count: $0.1) } ?? "")
+		return (sepOpen + asciiJoined + specialCharStateMapped + sepClose, hasProcessedNewLines)
 	}
 	
 	private static let newLines = CharacterSet.newlines
-	private static let specialChars = CharacterSet(charactersIn: #""\"#)
-	
+//#if swift(>=5.4)
+//	private static let specialChars = CharacterSet(charactersIn: #""\"#)
+//#else
+	private static let specialChars = CharacterSet(charactersIn: "\"\\")
+//#endif
+
 }
