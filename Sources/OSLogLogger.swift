@@ -24,8 +24,8 @@ public struct OSLogLogger : LogHandler {
 	 Example: "`com.xcode-actions.oslog-logger:LogHandler`".
 	 
 	 If there is no colon in the given label
-	 we set the category to “`<none>`” (it cannot be `nil`, suprisingly, and we decided against the empty String to be able to still filter this category)
-	 and we use the whole label for the subsystem.
+	  we set the category to “`<none>`” (it cannot be `nil`, suprisingly, and we decided against the empty String to be able to still filter this category)
+	  and we use the whole label for the subsystem.
 	 
 	 It is _not_ possible to have a subsystem containing a colon using this initializer. */
 	public init(label: String, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
