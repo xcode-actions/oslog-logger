@@ -5,6 +5,7 @@ import Logging
 
 
 
+@available(macOS 10.12, tvOS 10.0, iOS 10.0, watchOS 3.0, *)
 public struct OSLogLogger : LogHandler {
 	
 	public static let pubMetaPrefix = "pub."
@@ -153,6 +154,7 @@ public struct OSLogLogger : LogHandler {
 
 
 /* Adapted from CLTLogger. */
+@available(macOS 10.12, tvOS 10.0, iOS 10.0, watchOS 3.0, *)
 private extension OSLogLogger {
 	
 	/**

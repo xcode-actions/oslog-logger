@@ -7,6 +7,7 @@ import Logging
 /* The @Sendable attribute is only available starting at Swift 5.5.
  * We make these methods only available starting at Swift 5.8 for our convenience (avoids creating another Package@swift-... file)
  *  and because for Swift <5.8 the non-@Sendable variants of the methods are available. */
+@available(macOS 10.12, tvOS 10.0, iOS 10.0, watchOS 3.0, *)
 extension OSLogLogger {
 	
 	/**
