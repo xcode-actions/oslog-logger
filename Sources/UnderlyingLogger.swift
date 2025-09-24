@@ -21,6 +21,7 @@ internal enum UnderlyingLogger : GHALogger_Sendable {
 		}
 	}
 	
+#if swift(>=5.3)
 	@available(macOS 11, tvOS 14, iOS 14, watchOS 7, *)
 	var logger: Logger! {
 		switch self {
@@ -28,5 +29,6 @@ internal enum UnderlyingLogger : GHALogger_Sendable {
 			case .logger(let r): return (r as! Logger)
 		}
 	}
+#endif
 	
 }

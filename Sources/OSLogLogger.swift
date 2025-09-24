@@ -20,7 +20,11 @@ public struct OSLogLogger : LogHandler {
 	public init(subsystem: String, category: String, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
 		self.metadataProvider = metadataProvider
 		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
+#if swift(>=5.3)
 			self.l = .logger(os.Logger(subsystem: subsystem, category: category))
+#else
+			fatalError("Unreachable code: Swift if < 5.3, but macOS 11 or equivalent is available.")
+#endif
 		} else {
 			self.l = .oslog(.init(subsystem: subsystem, category: category))
 		}
@@ -37,17 +41,23 @@ public struct OSLogLogger : LogHandler {
 	public init(oslog: OSLog, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
 		self.metadataProvider = metadataProvider
 		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
+#if swift(>=5.3)
 			self.l = .logger(os.Logger(oslog))
+#else
+			fatalError("Unreachable code: Swift if < 5.3, but macOS 11 or equivalent is available.")
+#endif
 		} else {
 			self.l = .oslog(oslog)
 		}
 	}
 	
+#if swift(>=5.3)
 	@available(macOS 11, tvOS 14, iOS 14, watchOS 7, *)
 	public init(logger: os.Logger, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
 		self.metadataProvider = metadataProvider
 		self.l = .logger(logger)
 	}
+#endif
 	
 	public subscript(metadataKey metadataKey: String) -> Logging.Logger.Metadata.Value? {
 		get {metadata[metadataKey]}
@@ -65,6 +75,7 @@ public struct OSLogLogger : LogHandler {
 		else                                         {effectiveFlatMetadata = flatMetadataCache}
 		
 		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
+#if swift(>=5.3)
 			/* If we could use os.Logger directly.
 			 * Note these calls probably do more or less what the os_log call above does… */
 			switch level {
@@ -118,7 +129,10 @@ public struct OSLogLogger : LogHandler {
 						case (false, false): l.logger.critical("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
 					}
 			}
-			
+#else
+			fatalError("Unreachable code: Swift if < 5.3, but macOS 11 or equivalent is available.")
+#endif
+
 		} else {
 			switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
 				case ( true,  true): os_log("%{public}@",                                   log: l.oslog, type: Self.logLevelToLogType(level), "\(message)")
