@@ -9,10 +9,10 @@ import os
  *
  * Why not use OSLog everywhere?
  * Because it is broken (at least on macOS 14/iOS 17) and the subsystem and category are not properly set. */
-internal enum UnderlyingLogger {
+internal enum UnderlyingLogger : GHALogger_Sendable {
 	
 	case oslog(OSLog)
-	case logger(Any)
+	case logger(GHALogger_Sendable)
 	
 	var oslog: OSLog! {
 		switch self {

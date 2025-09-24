@@ -13,7 +13,7 @@ let package = Package(
 	targets: [
 		.target(name: "OSLogLogger", dependencies: [
 			.product(name: "Logging",   package: "swift-log"),
-		], path: "Sources"),
+		], path: "Sources", exclude: ["OSLogLogger+WithSendable.swift"]),
 		.testTarget(name: "OSLogLoggerTests", dependencies: ["OSLogLogger"], path: "Tests"),
 	]
 )
