@@ -7,6 +7,7 @@ import Logging
 
 
 
+@available(macOS 10.12, tvOS 10.0, iOS 10.0, watchOS 3.0, *)
 final class OSLogLoggerTests : XCTestCase {
 	
 	override class func setUp() {
