@@ -161,7 +161,7 @@ private extension OSLogLogger {
 	 Merge the logger’s metadata, the provider’s metadata and the given explicit metadata and return the new metadata.
 	 If the provider’s metadata and the explicit metadata are `nil`, returns `nil` to signify the current `flatMetadataCache` can be used. */
 	func mergedMetadata(with explicit: Logging.Logger.Metadata?) -> Logging.Logger.Metadata? {
-		var metadata = metadata
+		var metadata = self.metadata
 		let provided = metadataProvider?.get() ?? [:]
 		
 		guard !provided.isEmpty || !((explicit ?? [:]).isEmpty) else {
