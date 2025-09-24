@@ -23,7 +23,7 @@ public struct OSLogLogger : LogHandler {
 #if swift(>=5.3)
 			self.l = .logger(os.Logger(subsystem: subsystem, category: category))
 #else
-			fatalError("Unreachable code: Swift if < 5.3, but macOS 11 or equivalent is available.")
+			self.l = .oslog(.init(subsystem: subsystem, category: category))
 #endif
 		} else {
 			self.l = .oslog(.init(subsystem: subsystem, category: category))
@@ -44,7 +44,7 @@ public struct OSLogLogger : LogHandler {
 #if swift(>=5.3)
 			self.l = .logger(os.Logger(oslog))
 #else
-			fatalError("Unreachable code: Swift if < 5.3, but macOS 11 or equivalent is available.")
+			self.l = .oslog(oslog)
 #endif
 		} else {
 			self.l = .oslog(oslog)
@@ -130,9 +130,14 @@ public struct OSLogLogger : LogHandler {
 					}
 			}
 #else
-			fatalError("Unreachable code: Swift if < 5.3, but macOS 11 or equivalent is available.")
+			switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
+				case ( true,  true): os_log("%{public}@",                                   log: l.oslog, type: Self.logLevelToLogType(level), "\(message)")
+				case (false,  true): os_log("%{public}@\n  ▷ %{public}@",                   log: l.oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.public .joined(separator: "\n  ▷ "))
+				case ( true, false): os_log("%{public}@\n  ▷ %{private}@",                  log: l.oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.private.joined(separator: "\n  ▷ "))
+				case (false, false): os_log("%{public}@\n  ▷ %{public}@\n  ▷ %{private}@",  log: l.oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), effectiveFlatMetadata.private.joined(separator: "\n  ▷ "))
+			}
 #endif
-
+			
 		} else {
 			switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
 				case ( true,  true): os_log("%{public}@",                                   log: l.oslog, type: Self.logLevelToLogType(level), "\(message)")
