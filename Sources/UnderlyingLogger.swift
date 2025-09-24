@@ -7,7 +7,7 @@ import os
  * On macOS 11+, tvOS 14+, etc. we use os.Logger.
  * On lower platforms we use OSLog.
  *
- * Why not use OSLog anywhere?
+ * Why not use OSLog everywhere?
  * Because it is broken (at least on macOS 14/iOS 17) and the subsystem and category are not properly set. */
 internal enum UnderlyingLogger {
 	
