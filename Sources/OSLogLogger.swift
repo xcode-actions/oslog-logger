@@ -5,6 +5,7 @@ import Logging
 
 
 
+@available(macOS 10.12, tvOS 10.0, iOS 10.0, watchOS 3.0, *)
 public struct OSLogLogger : LogHandler {
 	
 	public static let pubMetaPrefix = "pub."
@@ -16,31 +17,14 @@ public struct OSLogLogger : LogHandler {
 	}
 	public var metadataProvider: Logging.Logger.MetadataProvider?
 	
-	/**
-	 Convenience init that splits the label in a subsystem and a category.
-	 
-	 The format of the lable should be as follow: "subsystem:category".
-	 The subsystem _should_ be a reverse-DNS identifier (as per Apple doc).
-	 Example: "`com.xcode-actions.oslog-logger:LogHandler`".
-	 
-	 If there is no colon in the given label
-	 we set the category to “`<none>`” (it cannot be `nil`, suprisingly, and we decided against the empty String to be able to still filter this category)
-	 and we use the whole label for the subsystem.
-	 
-	 It is _not_ possible to have a subsystem containing a colon using this initializer. */
-	public init(label: String, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
-		let split = label.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
-		let subsystem = split[0] /* Cannot not exists as we do not omit empty subsequences in the split. */
-		let categoryCollection = split.dropFirst()
-		assert(categoryCollection.count <= 1)
-		
-		self.init(subsystem: String(subsystem), category: categoryCollection.first.flatMap(String.init) ?? "<none>", metadataProvider: metadataProvider)
-	}
-	
 	public init(subsystem: String, category: String, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
 		self.metadataProvider = metadataProvider
 		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
+#if swift(>=5.3)
 			self.l = .logger(os.Logger(subsystem: subsystem, category: category))
+#else
+			self.l = .oslog(.init(subsystem: subsystem, category: category))
+#endif
 		} else {
 			self.l = .oslog(.init(subsystem: subsystem, category: category))
 		}
@@ -57,17 +41,23 @@ public struct OSLogLogger : LogHandler {
 	public init(oslog: OSLog, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
 		self.metadataProvider = metadataProvider
 		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
+#if swift(>=5.3)
 			self.l = .logger(os.Logger(oslog))
+#else
+			self.l = .oslog(oslog)
+#endif
 		} else {
 			self.l = .oslog(oslog)
 		}
 	}
 	
+#if swift(>=5.3)
 	@available(macOS 11, tvOS 14, iOS 14, watchOS 7, *)
 	public init(logger: os.Logger, metadataProvider: Logging.Logger.MetadataProvider? = LoggingSystem.metadataProvider) {
 		self.metadataProvider = metadataProvider
 		self.l = .logger(logger)
 	}
+#endif
 	
 	public subscript(metadataKey metadataKey: String) -> Logging.Logger.Metadata.Value? {
 		get {metadata[metadataKey]}
@@ -85,6 +75,7 @@ public struct OSLogLogger : LogHandler {
 		else                                         {effectiveFlatMetadata = flatMetadataCache}
 		
 		if #available(macOS 11, tvOS 14, iOS 14, watchOS 7, *) {
+#if swift(>=5.3)
 			/* If we could use os.Logger directly.
 			 * Note these calls probably do more or less what the os_log call above does… */
 			switch level {
@@ -138,6 +129,14 @@ public struct OSLogLogger : LogHandler {
 						case (false, false): l.logger.critical("\(message, privacy: .public)\n  ▷ \(effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), privacy: .public)\n  ▷ \(effectiveFlatMetadata.private.joined(separator: "\n  ▷ "), privacy: .private)")
 					}
 			}
+#else
+			switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
+				case ( true,  true): os_log("%{public}@",                                   log: l.oslog, type: Self.logLevelToLogType(level), "\(message)")
+				case (false,  true): os_log("%{public}@\n  ▷ %{public}@",                   log: l.oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.public .joined(separator: "\n  ▷ "))
+				case ( true, false): os_log("%{public}@\n  ▷ %{private}@",                  log: l.oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.private.joined(separator: "\n  ▷ "))
+				case (false, false): os_log("%{public}@\n  ▷ %{public}@\n  ▷ %{private}@",  log: l.oslog, type: Self.logLevelToLogType(level), "\(message)", effectiveFlatMetadata.public .joined(separator: "\n  ▷ "), effectiveFlatMetadata.private.joined(separator: "\n  ▷ "))
+			}
+#endif
 			
 		} else {
 			switch (effectiveFlatMetadata.public.isEmpty, effectiveFlatMetadata.private.isEmpty) {
@@ -174,13 +173,14 @@ public struct OSLogLogger : LogHandler {
 
 
 /* Adapted from CLTLogger. */
+@available(macOS 10.12, tvOS 10.0, iOS 10.0, watchOS 3.0, *)
 private extension OSLogLogger {
 	
 	/**
 	 Merge the logger’s metadata, the provider’s metadata and the given explicit metadata and return the new metadata.
 	 If the provider’s metadata and the explicit metadata are `nil`, returns `nil` to signify the current `flatMetadataCache` can be used. */
 	func mergedMetadata(with explicit: Logging.Logger.Metadata?) -> Logging.Logger.Metadata? {
-		var metadata = metadata
+		var metadata = self.metadata
 		let provided = metadataProvider?.get() ?? [:]
 		
 		guard !provided.isEmpty || !((explicit ?? [:]).isEmpty) else {
@@ -226,11 +226,11 @@ private extension OSLogLogger {
 	
 	func prettyMetadataValue(_ v: Logging.Logger.MetadataValue) -> String {
 		/* We return basically v.description, but dictionary keys are sorted. */
-		return switch v {
-			case .string(let str):      str.processForLogging(escapingMode: .escapeScalars(asASCII: true, octothorpLevel: nil, showQuotes: true), newLineProcessing: .escape).string
-			case .array(let array):     #"["# + array.map{ prettyMetadataValue($0) }.joined(separator: ", ") + #"]"#
-			case .dictionary(let dict): #"["# +              flatMetadataArray(dict).joined(separator: ", ") + #"]"#
-			case .stringConvertible(let c): prettyMetadataValue(.string(c.description))
+		switch v {
+			case .string(let str):          return str.processForLogging(escapingMode: .escapeScalars(asASCII: true, octothorpLevel: nil, showQuotes: true), newLineProcessing: .escape).string
+			case .array(let array):         return #"["# + array.map{ prettyMetadataValue($0) }.joined(separator: ", ") + #"]"#
+			case .dictionary(let dict):     return #"["# +              flatMetadataArray(dict).joined(separator: ", ") + #"]"#
+			case .stringConvertible(let c): return prettyMetadataValue(.string(c.description))
 		}
 	}
 	

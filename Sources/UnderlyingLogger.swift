@@ -7,12 +7,12 @@ import os
  * On macOS 11+, tvOS 14+, etc. we use os.Logger.
  * On lower platforms we use OSLog.
  *
- * Why not use OSLog anywhere?
+ * Why not use OSLog everywhere?
  * Because it is broken (at least on macOS 14/iOS 17) and the subsystem and category are not properly set. */
-internal enum UnderlyingLogger {
+internal enum UnderlyingLogger : GHALogger_Sendable {
 	
 	case oslog(OSLog)
-	case logger(Any)
+	case logger(GHALogger_Sendable)
 	
 	var oslog: OSLog! {
 		switch self {
@@ -21,6 +21,7 @@ internal enum UnderlyingLogger {
 		}
 	}
 	
+#if swift(>=5.3)
 	@available(macOS 11, tvOS 14, iOS 14, watchOS 7, *)
 	var logger: Logger! {
 		switch self {
@@ -28,5 +29,6 @@ internal enum UnderlyingLogger {
 			case .logger(let r): return (r as! Logger)
 		}
 	}
+#endif
 	
 }
